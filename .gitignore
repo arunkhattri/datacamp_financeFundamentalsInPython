@@ -12,6 +12,7 @@
 
 !*.py
 !*.png
+!*.org
 !pyproject.toml
 !poetry.lock
 

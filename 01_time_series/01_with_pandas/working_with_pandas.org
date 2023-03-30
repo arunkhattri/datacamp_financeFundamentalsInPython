@@ -1,0 +1,429 @@
+#+title: Working With Pandas
+
+** Working with Time Series in Pandas
+
+#+begin_src python :session *py-session :results output :exports code
+import pandas as pd
+import numpy as np
+from datetime import datetime
+import yfinance as yf
+import mplfinance as mpf
+import matplotlib.pyplot as plt
+#+end_src
+
+#+RESULTS:
+
+
+*** Basic building block: pd.Timestamp
+
+#+begin_src python :session *py-session :results output :exports both
+time_stamp = pd.Timestamp(datetime(2023, 3, 29))
+print(time_stamp)
+#+end_src
+
+#+RESULTS:
+: 2023-03-29 00:00:00
+
+sanity check
+
+#+begin_src python :session *py-session :results output :exports both
+print(pd.Timestamp("2023-03-29") == time_stamp)
+#+end_src
+
+#+RESULTS:
+: True
+
+*** attributes
+
+#+begin_src python :session *py-session :results output :exports both
+print(time_stamp.year)
+print(time_stamp.day_name())
+#+end_src
+
+#+RESULTS:
+: 2023
+: Wednesday
+
+** Sequence of dates & times
+
+#+begin_src python :session *py-session :results output :exports both
+index = pd.date_range(start="2022-01-01", periods=12, freq="M")
+print(index)
+
+print(index[0])
+#+end_src
+
+#+RESULTS:
+: DatetimeIndex(['2022-01-31', '2022-02-28', '2022-03-31', '2022-04-30',
+:                '2022-05-31', '2022-06-30', '2022-07-31', '2022-08-31',
+:                '2022-09-30', '2022-10-31', '2022-11-30', '2022-12-31'],
+:               dtype='datetime64[ns]', freq='M')
+: 2022-01-31 00:00:00
+
+*** timestamp to period
+
+#+begin_src python :session *py-session :results output :exports both
+print(index.to_period())
+#+end_src
+
+#+RESULTS:
+: PeriodIndex(['2022-01', '2022-02', '2022-03', '2022-04', '2022-05', '2022-06',
+:              '2022-07', '2022-08', '2022-09', '2022-10', '2022-11', '2022-12'],
+:             dtype='period[M]')
+
+** pandas dataframe with timestamp
+
+#+begin_src python :session *py-session :results output :exports both
+data = np.random.rand(12, 2)
+
+df = pd.DataFrame(index=index, data=data)
+df.info()
+#+end_src
+
+#+RESULTS:
+#+begin_example
+<class 'pandas.core.frame.DataFrame'>
+DatetimeIndex: 12 entries, 2022-01-31 to 2022-12-31
+Freq: M
+Data columns (total 2 columns):
+ #   Column  Non-Null Count  Dtype
+---  ------  --------------  -----
+ 0   0       12 non-null     float64
+ 1   1       12 non-null     float64
+dtypes: float64(2)
+memory usage: 288.0 bytes
+#+end_example
+
+
+** Exercises
+
+#+begin_src python :session *py-session :results output :exports both
+seven_days = pd.date_range(start="2023-1-1", freq="D", periods=7)
+
+for day in seven_days:
+    print(day.dayofweek, day.day_name())
+#+end_src
+
+#+RESULTS:
+: 6 Sunday
+: 0 Monday
+: 1 Tuesday
+: 2 Wednesday
+: 3 Thursday
+: 4 Friday
+: 5 Saturday
+
+** Time series transformation
+
+#+begin_src python :session *py-session :results output :exports both
+goog = yf.Ticker("GOOG")
+goog_data = goog.history(start="2022-03-01", end="2023-03-28", actions=False)
+print(goog_data.head())
+#+end_src
+
+#+RESULTS:
+:                                  Open        High         Low       Close    Volume
+: Date
+: 2022-03-01 00:00:00-05:00  134.479996  136.110992  133.378494  134.167999  24640000
+: 2022-03-02 00:00:00-05:00  134.608246  135.615494  133.432495  134.751495  23966000
+: 2022-03-03 00:00:00-05:00  135.978500  136.713806  133.431000  134.307999  19780000
+: 2022-03-04 00:00:00-05:00  133.382507  134.199005  130.408493  132.121994  24446000
+: 2022-03-07 00:00:00-05:00  131.904007  131.904007  126.410004  126.464500  39178000
+
+
+plotting close price, ohlc chart
++ left mark - open,
++ right mark - close
+
+#+begin_src python :session *py-session :results output file :exports both
+mpf.plot(goog_data, savefig="images/google.png")
+print("images/google.png")
+#+end_src
+
+#+RESULTS:
+[[file:images/google.png]]
+
+
+*** slicing and indexing
+
+#+begin_src python :session *py-session :results output :exports both
+google_jan_onwards = goog_data["2023-1":"2023-3"]
+google_jan_onwards.info()
+#+end_src
+
+#+RESULTS:
+#+begin_example
+<class 'pandas.core.frame.DataFrame'>
+DatetimeIndex: 58 entries, 2023-01-03 00:00:00-05:00 to 2023-03-27 00:00:00-04:00
+Data columns (total 5 columns):
+ #   Column  Non-Null Count  Dtype
+---  ------  --------------  -----
+ 0   Open    58 non-null     float64
+ 1   High    58 non-null     float64
+ 2   Low     58 non-null     float64
+ 3   Close   58 non-null     float64
+ 4   Volume  58 non-null     int64
+dtypes: float64(4), int64(1)
+memory usage: 2.7 KB
+#+end_example
+
+plot
+
+#+begin_src python :session *py-session :results output file :exports both
+mpf.plot(google_jan_onwards, type="candle", savefig="images/google2.png")
+print("images/google2.png")
+#+end_src
+
+#+RESULTS:
+[[file:images/google2.png]]
+
+** Exercise: Create a time series of air quality data
+
++ inspect data
+
+#+begin_src python :session *py-session :results output :exports both
+df = pd.read_csv("../data/nyc.csv")
+print(df.info())
+#+end_src
+
+  #+RESULTS:
+  #+begin_example
+  <class 'pandas.core.frame.DataFrame'>
+  RangeIndex: 6317 entries, 0 to 6316
+  Data columns (total 4 columns):
+   #   Column  Non-Null Count  Dtype
+  ---  ------  --------------  -----
+   0   date    6317 non-null   object
+   1   ozone   6317 non-null   float64
+   2   pm25    6317 non-null   float64
+   3   co      6317 non-null   float64
+  dtypes: float64(3), object(1)
+  memory usage: 197.5+ KB
+  None
+  #+end_example
+
++ convert the ~date~ column to ~datetime64~
+  #+begin_src python :session *py-session :results output :exports both
+df.date = pd.to_datetime(df.date)
+print(df.info())
+  #+end_src
+
+  #+RESULTS:
+  #+begin_example
+  <class 'pandas.core.frame.DataFrame'>
+  RangeIndex: 6317 entries, 0 to 6316
+  Data columns (total 4 columns):
+   #   Column  Non-Null Count  Dtype
+  ---  ------  --------------  -----
+   0   date    6317 non-null   datetime64[ns]
+   1   ozone   6317 non-null   float64
+   2   pm25    6317 non-null   float64
+   3   co      6317 non-null   float64
+  dtypes: datetime64[ns](1), float64(3)
+  memory usage: 197.5 KB
+  None
+  #+end_example
+
++ set the ~date~ column as ~index~. validate the changes by inspecting ~data~ using ~.info()~ again
+
+  #+begin_src python :session *py-session :results output :exports both
+df.set_index('date', inplace=True)
+print(df.info())
+  #+end_src
+
+  #+RESULTS:
+  #+begin_example
+  <class 'pandas.core.frame.DataFrame'>
+  DatetimeIndex: 6317 entries, 1999-07-01 to 2017-03-31
+  Data columns (total 3 columns):
+   #   Column  Non-Null Count  Dtype
+  ---  ------  --------------  -----
+   0   ozone   6317 non-null   float64
+   1   pm25    6317 non-null   float64
+   2   co      6317 non-null   float64
+  dtypes: float64(3)
+  memory usage: 197.4 KB
+  None
+  #+end_example
+
++ Plot ~data~ using ~subplots=True~
+
+#+begin_src python :session *py-session :results output file :exports both
+fig, ax = plt.subplots(nrows=3, sharex=True)
+ax[0].plot(df.index, df.ozone)
+ax[0].set(ylabel="Ozone")
+ax[1].plot(df.index, df.pm25)
+ax[1].set(ylabel="PM25")
+ax[2].plot(df.index, df.co)
+ax[2].set(ylabel="CO")
+fig.savefig("images/nyc.png")
+print("images/nyc.png")
+#+end_src
+
+#+RESULTS:
+[[file:images/nyc.png]]
+
+** Exercise: Compare annual stock price trends
+
+#+begin_src python :session *py-session :results output :exports both
+yahoo = pd.read_csv("../data/yahoo.csv")
+yahoo.date = pd.to_datetime(yahoo.date)
+yahoo.set_index("date", inplace=True)
+print(yahoo.info())
+#+end_src
+
+#+RESULTS:
+: <class 'pandas.core.frame.DataFrame'>
+: DatetimeIndex: 782 entries, 2013-01-02 to 2015-12-31
+: Data columns (total 1 columns):
+:  #   Column  Non-Null Count  Dtype
+: ---  ------  --------------  -----
+:  0   price   756 non-null    float64
+: dtypes: float64(1)
+: memory usage: 12.2 KB
+: None
+
+Create an empty dataframe called ~prices~.
+
+#+begin_src python :session *py-session :results output :exports both
+prices = pd.DataFrame()
+print(prices.info)
+#+end_src
+
+#+RESULTS:
+: <bound method DataFrame.info of Empty DataFrame
+: Columns: []
+: Index: []>
+
+Iterate over a list containing the three years, 2013, 2014 and 2015 as ~string~ and in each loop:
++ Use the iteration variable to select the data for this year and the column ~price~.
++ Use ~.reset_index()~ with ~drop=True~ to remove the ~DatetimeIndex~.
++ Rename the column ~price~ column to the appropriate ~year~.
++ Use ~pd.concat()~ to combine the yearly data with the data in ~prices~ along ~axis=1~ .
+
+  #+begin_src python :session *py-session :results output :exports both
+three_years = ['2013', '2014', '2015']
+for y in three_years:
+    prices_per_year = yahoo.loc[y, ['price']].reset_index(drop=True)
+    prices_per_year.rename(columns={"price": y}, inplace=True)
+    prices = pd.concat([prices, prices_per_year], axis = 1)
+print(prices.info())
+  #+end_src
+
+  #+RESULTS:
+  #+begin_example
+  <class 'pandas.core.frame.DataFrame'>
+  RangeIndex: 261 entries, 0 to 260
+  Data columns (total 3 columns):
+   #   Column  Non-Null Count  Dtype
+  ---  ------  --------------  -----
+   0   2013    252 non-null    float64
+   1   2014    252 non-null    float64
+   2   2015    252 non-null    float64
+  dtypes: float64(3)
+  memory usage: 6.2 KB
+  None
+  #+end_example
+
+  Plot prices
+
+  #+begin_src python :session *py-session :results output file :exports both
+prices.plot()
+plt.savefig("images/prices.png")
+print("images/prices.png")
+  #+end_src
+
+  #+RESULTS:
+  [[file:images/prices.png]]
+** Exercise: Set and change time series frequency
+Load the ~co_cities.csv~ file as ~co~ and inspect...
+
+#+begin_src python :session *py-session :results output :exports both
+co = pd.read_csv("../data/co_cities.csv")
+co.date = pd.to_datetime(co.date)
+co.set_index("date", inplace=True)
+print(co.info())
+#+end_src
+
+#+RESULTS:
+#+begin_example
+<class 'pandas.core.frame.DataFrame'>
+DatetimeIndex: 1898 entries, 2005-01-01 to 2010-12-31
+Data columns (total 3 columns):
+ #   Column       Non-Null Count  Dtype
+---  ------       --------------  -----
+ 0   Chicago      1898 non-null   float64
+ 1   Los Angeles  1898 non-null   float64
+ 2   New York     1898 non-null   float64
+dtypes: float64(3)
+memory usage: 59.3 KB
+None
+#+end_example
+
+Use ~.asfreq()~ to set the frequency to calendar daily.
+
+#+begin_src python :session *py-session :results output :exports both
+co = co.asfreq("D")
+print(co.info())
+#+end_src
+
+#+RESULTS:
+#+begin_example
+<class 'pandas.core.frame.DataFrame'>
+DatetimeIndex: 2191 entries, 2005-01-01 to 2010-12-31
+Freq: D
+Data columns (total 3 columns):
+ #   Column       Non-Null Count  Dtype
+---  ------       --------------  -----
+ 0   Chicago      1898 non-null   float64
+ 1   Los Angeles  1898 non-null   float64
+ 2   New York     1898 non-null   float64
+dtypes: float64(3)
+memory usage: 68.5 KB
+None
+#+end_example
+
+Show a plot of ~co~ using ~subplots=True~
+
+#+begin_src python :session *py-session :results output file :exports both
+co.plot(subplots=True)
+plt.savefig("images/co.png")
+print("images/co.png")
+#+end_src
+
+#+RESULTS:
+[[file:images/co.png]]
+
+Change the frequency to monthly using the alias ~'M'~
+
+#+begin_src python :session *py-session :results output :exports both
+co = co.asfreq("M")
+print(co.info())
+#+end_src
+
+#+RESULTS:
+#+begin_example
+<class 'pandas.core.frame.DataFrame'>
+DatetimeIndex: 72 entries, 2005-01-31 to 2010-12-31
+Freq: M
+Data columns (total 3 columns):
+ #   Column       Non-Null Count  Dtype
+---  ------       --------------  -----
+ 0   Chicago      68 non-null     float64
+ 1   Los Angeles  68 non-null     float64
+ 2   New York     68 non-null     float64
+dtypes: float64(3)
+memory usage: 2.2 KB
+None
+#+end_example
+
+Show another plot of ~co~ using ~subplots=True~
+
+#+begin_src python :session *py-session :results output file :exports both
+co.plot(subplots=True)
+plt.savefig("images/co.png")
+print("images/co.png")
+#+end_src
+
+#+RESULTS:
+[[file:images/co.png]]
