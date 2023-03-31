@@ -1,7 +1,7 @@
-#+title: Working With Pandas
+#+title: Working With Time Series in Pandas
+#+STARTUP: latexpreview
 
-** Working with Time Series in Pandas
-
+** Python modules
 #+begin_src python :session *py-session :results output :exports code
 import pandas as pd
 import numpy as np
@@ -13,6 +13,7 @@ import matplotlib.pyplot as plt
 
 #+RESULTS:
 
+** Dates and Times with Pandas
 
 *** Basic building block: pd.Timestamp
 
@@ -116,19 +117,20 @@ for day in seven_days:
 ** Time series transformation
 
 #+begin_src python :session *py-session :results output :exports both
+pd.set_option('display.float_format', '{:.2f}'.format)
 goog = yf.Ticker("GOOG")
 goog_data = goog.history(start="2022-03-01", end="2023-03-28", actions=False)
 print(goog_data.head())
 #+end_src
 
 #+RESULTS:
-:                                  Open        High         Low       Close    Volume
+:                             Open   High    Low  Close    Volume
 : Date
-: 2022-03-01 00:00:00-05:00  134.479996  136.110992  133.378494  134.167999  24640000
-: 2022-03-02 00:00:00-05:00  134.608246  135.615494  133.432495  134.751495  23966000
-: 2022-03-03 00:00:00-05:00  135.978500  136.713806  133.431000  134.307999  19780000
-: 2022-03-04 00:00:00-05:00  133.382507  134.199005  130.408493  132.121994  24446000
-: 2022-03-07 00:00:00-05:00  131.904007  131.904007  126.410004  126.464500  39178000
+: 2022-03-01 00:00:00-05:00 134.48 136.11 133.38 134.17  24640000
+: 2022-03-02 00:00:00-05:00 134.61 135.62 133.43 134.75  23966000
+: 2022-03-03 00:00:00-05:00 135.98 136.71 133.43 134.31  19780000
+: 2022-03-04 00:00:00-05:00 133.38 134.20 130.41 132.12  24446000
+: 2022-03-07 00:00:00-05:00 131.90 131.90 126.41 126.46  39178000
 
 
 plotting close price, ohlc chart
@@ -427,3 +429,144 @@ print("images/co.png")
 
 #+RESULTS:
 [[file:images/co.png]]
+
+** Lags, Changes, and returns for stock price series
+Basic time series manipulations:
++ Shift or lag values back or forward in time.
++ get the difference in value for a given time period.
++ Percent change over any number of periods.
+
+Getting ~GOOG~ stock prices
+
+#+begin_src python :session *py-session :results output :exports both
+google = goog_data.loc[:,['Close']]
+print(google.head())
+#+end_src
+
+#+RESULTS:
+:                            Close
+: Date
+: 2022-03-01 00:00:00-05:00 134.17
+: 2022-03-02 00:00:00-05:00 134.75
+: 2022-03-03 00:00:00-05:00 134.31
+: 2022-03-04 00:00:00-05:00 132.12
+: 2022-03-07 00:00:00-05:00 126.46
+
+*** ~.shift()~: Moving data between past & future
+defaults at ~periods=1~, 1 period into future
+
+#+begin_src python :session *py-session :results output :exports both
+google['shifted'] = google.Close.shift()
+print(google.head())
+#+end_src
+
+#+RESULTS:
+:                            Close  shifted
+: Date
+: 2022-03-01 00:00:00-05:00 134.17      NaN
+: 2022-03-02 00:00:00-05:00 134.75   134.17
+: 2022-03-03 00:00:00-05:00 134.31   134.75
+: 2022-03-04 00:00:00-05:00 132.12   134.31
+: 2022-03-07 00:00:00-05:00 126.46   132.12
+
+ ~.shift(periods=-1)~: lagged data, 1 period back in time
+
+ #+begin_src python :session *py-session :results output :exports both
+google['lagged'] = google.Close.shift(periods=-1)
+print(google.tail())
+ #+end_src
+
+ #+RESULTS:
+ :                            Close  shifted  lagged
+ : Date
+ : 2023-03-21 00:00:00-04:00 105.84   101.93  104.22
+ : 2023-03-22 00:00:00-04:00 104.22   105.84  106.26
+ : 2023-03-23 00:00:00-04:00 106.26   104.22  106.06
+ : 2023-03-24 00:00:00-04:00 106.06   106.26  103.06
+ : 2023-03-27 00:00:00-04:00 103.06   106.06     NaN
+
+
+ *Calculate one-period percent change*
+
+ $x_t / x_{t-1}$
+ 
+ #+begin_src python :session *py-session :results output :exports both
+google['change'] = google.Close.div(google.shifted)
+print(google.head())
+ #+end_src
+
+ #+RESULTS:
+ :                            Close  shifted  lagged  change  return
+ : Date
+ : 2022-03-01 00:00:00-05:00 134.17      NaN  134.75     NaN     NaN
+ : 2022-03-02 00:00:00-05:00 134.75   134.17  134.31    1.00    0.43
+ : 2022-03-03 00:00:00-05:00 134.31   134.75  132.12    1.00   -0.33
+ : 2022-03-04 00:00:00-05:00 132.12   134.31  126.46    0.98   -1.63
+ : 2022-03-07 00:00:00-05:00 126.46   132.12  127.28    0.96   -4.28
+
+
+ *Calculate return*
+
+ #+begin_src python :session *py-session :results output :exports both
+google['return'] = google.change.sub(1).mul(100)
+print(google.head())
+ #+end_src
+
+ #+RESULTS:
+ :                            Close  shifted  lagged  change  return
+ : Date
+ : 2022-03-01 00:00:00-05:00 134.17      NaN  134.75     NaN     NaN
+ : 2022-03-02 00:00:00-05:00 134.75   134.17  134.31    1.00    0.43
+ : 2022-03-03 00:00:00-05:00 134.31   134.75  132.12    1.00   -0.33
+ : 2022-03-04 00:00:00-05:00 132.12   134.31  126.46    0.98   -1.63
+ : 2022-03-07 00:00:00-05:00 126.46   132.12  127.28    0.96   -4.28
+
+
+ ~.diff()~: *built-in time-series change*
+ + Difference in value for two adjacent periods. $x_t - x_{t-1}$
+
+   #+begin_src python :session *py-session :results output :exports both
+google['diff'] = google.Close.diff()
+print(google[['Close', 'diff']].head())
+   #+end_src
+
+   #+RESULTS:
+   :                            Close  diff
+   : Date
+   : 2022-03-01 00:00:00-05:00 134.17   NaN
+   : 2022-03-02 00:00:00-05:00 134.75  0.58
+   : 2022-03-03 00:00:00-05:00 134.31 -0.44
+   : 2022-03-04 00:00:00-05:00 132.12 -2.19
+   : 2022-03-07 00:00:00-05:00 126.46 -5.66
+
+
+ ~.pct_change()~: *built-in time-series % change*
+ + Percent change for two adjacent periods. ($\frac{x_t}{x_{t-1}}$)
+
+ #+begin_src python :session *py-session :results output :exports both
+google['pct_change'] = google.Close.pct_change().mul(100)
+print(google[['Close', 'diff', 'pct_change']].head(3))
+ #+end_src
+
+ #+RESULTS:
+ :                            Close  diff  pct_change
+ : Date
+ : 2022-03-01 00:00:00-05:00 134.17   NaN         NaN
+ : 2022-03-02 00:00:00-05:00 134.75  0.58        0.43
+ : 2022-03-03 00:00:00-05:00 134.31 -0.44       -0.33
+
+
+ *Looking ahead: Get multi-period returns*
+
+ #+begin_src python :session *py-session :results output :exports both
+google['return_5d'] = google.Close.pct_change(periods=5).mul(100)
+print(google.iloc[6:10, [0, -2, -1]])
+ #+end_src
+
+ #+RESULTS:
+ :                            Close  pct_change  return_5d
+ : Date
+ : 2022-03-09 00:00:00-05:00 133.87        5.18      -0.66
+ : 2022-03-10 00:00:00-05:00 132.68       -0.88      -1.21
+ : 2022-03-11 00:00:00-05:00 130.48       -1.66      -1.25
+ : 2022-03-14 00:00:00-04:00 126.74       -2.86       0.22
