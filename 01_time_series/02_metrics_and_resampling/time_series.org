@@ -191,3 +191,174 @@ print("img/compare_with_benchmark.png")
 
 #+RESULTS:
 [[file:img/compare_with_benchmark.png]]
+
+* Changing the time series frequency: resampling
+changing the frequency of a time series, we often need to convert two time series to a common frequency to analyze them together
+
+** Upsampling
+
+let's create a quarterly data...
+
+#+begin_src python :session *py-session :results output :exports both
+dates = pd.date_range(start='2022', periods=4, freq='Q')
+data = range(1, 5)
+quarterly = pd.Series(data= data, index=dates)
+print(quarterly)
+#+end_src
+
+#+RESULTS:
+: 2022-03-31    1
+: 2022-06-30    2
+: 2022-09-30    3
+: 2022-12-31    4
+: Freq: Q-DEC, dtype: int64
+
+upsampling from quarterly to monthly
+
+#+begin_src python :session *py-session :results output :exports both
+monthly = quarterly.asfreq('M')
+print(monthly)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+2022-03-31    1.0
+2022-04-30    NaN
+2022-05-31    NaN
+2022-06-30    2.0
+2022-07-31    NaN
+2022-08-31    NaN
+2022-09-30    3.0
+2022-10-31    NaN
+2022-11-30    NaN
+2022-12-31    4.0
+Freq: M, dtype: float64
+#+end_example
+
+pandas adds new month-end dates to the ~DateTimeIndex~ between the existing dates.
+Upsampling creaes missing values.
+
+3-ways to fill missing values when upsampling:
+
+converting ~monthly~ to dataframe
+
+#+begin_src python :session *py-session :results output :exports both
+monthly = monthly.to_frame('baseline')
+print(monthly)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+            baseline
+2022-03-31       1.0
+2022-04-30       NaN
+2022-05-31       NaN
+2022-06-30       2.0
+2022-07-31       NaN
+2022-08-31       NaN
+2022-09-30       3.0
+2022-10-31       NaN
+2022-11-30       NaN
+2022-12-31       4.0
+#+end_example
+
+The first two options are using fill options - *forward fill* or *backward fill*. the third option is to provide a fill value
+
+#+begin_src python :session *py-session :results output :exports both
+monthly['ffill'] = quarterly.asfreq('M', method='ffill')
+monthly['bfill'] = quarterly.asfreq('M', method='bfill')
+monthly['value'] = quarterly.asfreq('M', fill_value=0)
+print(monthly)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+            baseline  ffill  bfill  value
+2022-03-31       1.0      1      1      1
+2022-04-30       NaN      1      2      0
+2022-05-31       NaN      1      2      0
+2022-06-30       2.0      2      2      2
+2022-07-31       NaN      2      3      0
+2022-08-31       NaN      2      3      0
+2022-09-30       3.0      3      3      3
+2022-10-31       NaN      3      4      0
+2022-11-30       NaN      3      4      0
+2022-12-31       4.0      4      4      4
+#+end_example
+
+Add missing months: ~.reindex()~
+
+#+begin_src python :session *py-session :results output :exports both
+dates = pd.date_range(start='2022', periods=12, freq='M')
+quarterly = quarterly.reindex(dates)
+print(quarterly)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+2022-01-31    NaN
+2022-02-28    NaN
+2022-03-31    1.0
+2022-04-30    NaN
+2022-05-31    NaN
+2022-06-30    2.0
+2022-07-31    NaN
+2022-08-31    NaN
+2022-09-30    3.0
+2022-10-31    NaN
+2022-11-30    NaN
+2022-12-31    4.0
+Freq: M, dtype: float64
+#+end_example
+
+using fill with ~.reindex()~
+
+back fill:
+
+#+begin_src python :session *py-session :results output :exports both
+dates = pd.date_range(start='2022', periods=4, freq='Q')
+data = range(1, 5)
+quarterly = pd.Series(data= data, index=dates)
+mth_dates = pd.date_range(start='2022', periods=12, freq='M')
+print(quarterly.reindex(mth_dates, method='bfill'))
+#+end_src
+
+#+RESULTS:
+#+begin_example
+2022-01-31    1
+2022-02-28    1
+2022-03-31    1
+2022-04-30    2
+2022-05-31    2
+2022-06-30    2
+2022-07-31    3
+2022-08-31    3
+2022-09-30    3
+2022-10-31    4
+2022-11-30    4
+2022-12-31    4
+Freq: M, dtype: int64
+#+end_example
+
+forward fill
+
+#+begin_src python :session *py-session :results output :exports both
+print(quarterly.reindex(mth_dates, method='ffill'))
+#+end_src
+
+#+RESULTS:
+#+begin_example
+2022-01-31    NaN
+2022-02-28    NaN
+2022-03-31    1.0
+2022-04-30    1.0
+2022-05-31    1.0
+2022-06-30    2.0
+2022-07-31    2.0
+2022-08-31    2.0
+2022-09-30    3.0
+2022-10-31    3.0
+2022-11-30    3.0
+2022-12-31    4.0
+Freq: M, dtype: float64
+#+end_example
