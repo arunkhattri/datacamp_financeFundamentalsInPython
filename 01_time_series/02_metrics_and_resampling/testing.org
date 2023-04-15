@@ -1,0 +1,12 @@
+* Testing python lsp
+
+** Import modules
+
+#+begin_src python :tangle testing.py :session *py-session :results output :exports both
+import numpy as np
+
+print(np.random.randint(10, 90))
+#+end_src
+
+#+RESULTS:
+: 23
